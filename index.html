@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>D Tracker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 30C36 14 10 20 12 52C14 80 34 92 50 84C66 92 86 80 88 52C90 20 64 14 50 30Z' fill='%23d62828'/%3E%3Cpath d='M50 30C50 20 54 12 62 8' stroke='%23333' stroke-width='4' fill='none'/%3E%3Ctext x='50' y='67' font-size='44' font-family='Arial' font-weight='bold' text-anchor='middle' fill='white'%3ED%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="D Tracker">
+<style>
+:root{ --bg:#ffffff; --text:#222222; --unused:#e4e4e4; --used:#96e696; --excess:#e5484d; --line:#333333; }
+*{box-sizing:border-box}
+/* Stop browsers treating quick repeated taps as a double-tap zoom */
+html{touch-action:manipulation}
+button,input,select,textarea,.bar{touch-action:manipulation}
+html,body{margin:0;height:100%}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  background:var(--bg); color:var(--text); font-size:15px;
+  max-width:480px; margin:0 auto; height:100vh; height:100dvh;
+  display:flex; flex-direction:column;
+}
+#app{flex:1; overflow-y:auto; padding:8px 12px; padding-top:calc(8px + env(safe-area-inset-top,0px))}
+
+/* Headers */
+.head{display:grid; grid-template-columns:44px 1fr 44px; align-items:center; min-height:44px; margin-bottom:2px}
+.hslot{display:flex; justify-content:flex-start; align-items:center}
+.hrslot{display:flex; justify-content:flex-end; align-items:center}
+.ttl{text-align:center; font-size:19px; font-weight:700; letter-spacing:.03em}
+.ttl .dd{color:#d62828; font-size:21px}
+.subnav{display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:6px; font-size:13px; min-height:30px}
+.subnav button{width:34px; height:30px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--text); font-size:16px; cursor:pointer}
+.subnav button:disabled{opacity:.3; cursor:default}
+.icon{background:none; border:none; color:var(--text); padding:4px; cursor:pointer; line-height:0}
+.link{background:none; border:none; font-size:15px; color:var(--text); padding:4px 0; cursor:pointer}
+.note{font-size:12px; opacity:.75; margin-top:6px; line-height:1.5}
+.sec-label{font-size:11px; letter-spacing:.08em; text-transform:uppercase; opacity:.7; margin:8px 0 0}
+.r{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+
+/* Today rows */
+.row{padding:6px 0; border-bottom:1px solid var(--unused)}
+.wline{border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin-top:8px}
+.wline .row{border-bottom:none}
+.rtop{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px}
+.gname{font-weight:600}
+.nums{font-variant-numeric:tabular-nums; text-align:right; min-width:11em}
+.over{color:var(--excess); font-weight:700}
+.rbot{display:flex; align-items:center; gap:8px}
+.pm{width:44px; height:38px; font-size:22px; line-height:1; border:1px solid var(--line); background:var(--bg); color:var(--text); border-radius:6px; cursor:pointer; flex:0 0 44px}
+.pm:disabled{opacity:.3; cursor:default}
+.bar{flex:1; display:flex; align-items:stretch; height:32px; min-width:0; cursor:pointer}
+.seg{flex:none; border:1px solid var(--line); margin-left:-1px; pointer-events:none}
+.seg:first-child{margin-left:0}
+
+/* History grid */
+.hgrid{display:grid; grid-template-columns:76px repeat(8,1fr); gap:3px; font-size:12px; align-items:center}
+.hdate{text-align:center; font-size:10px; line-height:1.25; min-height:44px; display:flex; flex-direction:column; justify-content:flex-end}
+.hdate .l1{font-weight:700; color:#d62828; min-height:13px}
+.hlab{font-size:11px; font-weight:600; line-height:1.2}
+.sec-row{grid-column:1/-1; font-size:11px; letter-spacing:.08em; text-transform:uppercase; opacity:.7; margin-top:8px}
+.hline{grid-column:1/-1; border-top:1px solid var(--line); height:0; margin:4px 0}
+.hc{position:relative; height:50px; border:1px solid var(--line); border-radius:4px; overflow:hidden; font-variant-numeric:tabular-nums}
+.hc.none{border-style:dashed; border-color:var(--unused); display:flex; align-items:center; justify-content:center; opacity:.4}
+.hc svg{position:absolute; inset:0; width:100%; height:100%}
+.hc line{stroke:var(--line); stroke-width:1}
+.hc .tl{position:absolute; top:2px; left:4px; font-size:12px; font-weight:700}
+.hc .br{position:absolute; bottom:2px; right:4px; font-size:12px}
+.legend{display:flex; justify-content:center; gap:14px; flex-wrap:wrap; font-size:12px; margin-top:14px; align-items:center}
+.legend span{display:inline-flex; align-items:center; gap:5px}
+.sw{display:inline-block; width:14px; height:14px; border:1px solid var(--line); border-radius:2px}
+
+/* Food QTY */
+details{border-bottom:1px solid var(--unused); padding:8px 0}
+summary{cursor:pointer; list-style:none; font-weight:700; font-size:15px; display:flex; justify-content:space-between}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+"; font-weight:400}
+details[open] summary::after{content:"–"}
+.qhead,.qrow{display:flex; justify-content:space-between; gap:10px; padding:5px 0; font-size:14px}
+.qhead{font-size:11px; text-transform:uppercase; opacity:.6; letter-spacing:.04em; border-bottom:1px solid var(--line); margin-top:6px}
+.qrow{border-bottom:1px solid var(--unused)}
+.qrow span:last-child{text-align:right; white-space:nowrap}
+
+/* Weight */
+.tgt{display:flex; justify-content:center; align-items:center; gap:10px; padding:8px 0 12px; border-bottom:1px solid var(--line); margin-bottom:10px}
+.tgt label{display:flex; align-items:center; gap:10px; font-size:14px}
+.wform{display:grid; grid-template-columns:1fr; gap:8px; margin:0 0 10px}
+.wform label{display:flex; justify-content:space-between; align-items:center; font-size:14px; gap:10px}
+input[type=number], input[type=date], input[type=text], select{height:34px; font-size:15px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--text)}
+input[type=number]{width:110px}
+input[type=date]{width:150px}
+input[type=text]{width:100%}
+.gwrap{display:flex; border:1px solid var(--unused); border-radius:6px; overflow:hidden}
+.gscroll{flex:1; overflow-x:auto; overflow-y:hidden}
+.tscroll{max-height:156px; overflow-y:auto; border:1px solid var(--unused); border-radius:6px}
+.trow{display:grid; grid-template-columns:1.25fr .8fr 1.1fr; gap:6px; padding:6px 8px; font-size:13px; border-bottom:1px solid var(--unused); font-variant-numeric:tabular-nums}
+.trow.th{font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.04em; position:sticky; top:0; background:var(--bg)}
+.trow span:nth-child(n+2){text-align:right}
+
+/* Menu Plans */
+.mtop{display:flex; justify-content:center; align-items:center; gap:10px; padding-bottom:10px; border-bottom:1px solid var(--line); margin-bottom:10px}
+.mtop label{display:flex; align-items:center; gap:8px; font-size:14px}
+.mgrid{display:grid; grid-template-columns:64px repeat(4,1fr); gap:4px; align-items:start}
+.mh{font-size:12px; font-weight:700; text-align:center; align-self:end; padding-bottom:2px}
+.mlab{font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:space-between; min-height:30px}
+.gtog{width:24px; height:24px; padding:0; font-size:16px; line-height:1; border:1px solid var(--line); border-radius:4px; background:var(--bg); color:var(--text); cursor:pointer; flex:0 0 24px}
+.mguide{font-size:11px; text-align:center; border:1px solid var(--line); border-radius:4px; padding:3px 2px; line-height:1.4; font-variant-numeric:tabular-nums; min-height:30px}
+.mguide.full{text-align:left; font-size:10.5px; padding:4px 4px}
+.mguide.full div{margin-bottom:1px}
+.mday{font-size:11px; line-height:1.25; display:flex; flex-direction:column; justify-content:flex-start; padding-top:4px}
+.mday b{font-size:12px}
+textarea{width:100%; min-height:58px; overflow:hidden; font-size:12px; font-family:inherit; padding:3px 4px; border:1px solid var(--line); border-radius:4px; background:var(--bg); color:var(--text); resize:none; line-height:1.3; display:block}
+.msave{margin-top:14px; padding-top:10px; border-top:1px solid var(--line); display:grid; gap:8px}
+.msave select{flex:1; min-width:150px; height:34px}
+.mmsg{font-size:12px; min-height:16px; opacity:.8}
+
+/* Settings */
+.sec{border-top:1px solid var(--line); margin-top:16px; padding-top:4px}
+h3{font-size:14px; margin:8px 0 6px; text-transform:uppercase; letter-spacing:.04em}
+.srow{display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid var(--unused); gap:8px}
+.dflt{font-size:12px; opacity:.7}
+.sctl{display:flex; gap:6px; align-items:center}
+input[type=color]{width:56px; height:34px; padding:2px; border:1px solid var(--line); border-radius:6px; background:var(--bg)}
+.btn{height:34px; padding:0 12px; font-size:14px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--text); cursor:pointer}
+.btn:disabled{opacity:.4; cursor:default}
+.ver{text-align:center; font-size:11px; opacity:.5; margin:18px 0 6px}
+
+/* Bottom tabs */
+.tabs{display:flex; gap:5px; padding:6px 6px; padding-bottom:calc(6px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--line); background:var(--bg)}
+.tabs button{flex:1; height:44px; border:1.5px solid var(--line); border-radius:8px; background:var(--bg); color:var(--text); font-size:12px; padding:0 2px; cursor:pointer}
+.tabs button.on{background:color-mix(in srgb, var(--used) 45%, var(--bg)); font-weight:700}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<nav class="tabs" id="tabs"></nav>
+
+<script>
+const VERSION = '0.8';
+const DRAFT_MODE = false;      // set to false to hide the date arrows and always use today
+const KEY = 'dtracker.v1';    // same key so earlier test data carries over
+const EX_MAX = 120, EX_STEP = 5, EX_SEG = 10, EX_DEFAULT = 30;
+const WATER_DEFAULT = 8;      // cups
+const PX_PER_DAY = 36;
+
+// Food allowances stored in HALF units (5 = 2.5 units).
+const GROUPS = [
+  {name:'Protein',             code:'P', def:2.5, min:false},
+  {name:'Breads / Cereals',    code:'B', def:3,   min:false},
+  {name:'Vegetables',          code:'V', def:2.5, min:true},
+  {name:'Fruit',               code:'F', def:2,   min:false},
+  {name:'Dairy',               code:'D', def:3,   min:false},
+  {name:'Healthy Fats & Oils', code:'O', def:3,   min:false},
+  {name:'Indulgences',         code:null, def:1,  min:false}
+];
+const CODE_NAME = {P:'Protein', B:'Breads / Cereals', V:'Vegetables', F:'Fruit', D:'Dairy', O:'Healthy Fats & Oils'};
+const EXERCISE = ['Cardio', 'Strength'];
+const DEF_ALLOW = GROUPS.map(g => Math.round(g.def * 2));
+const DEF_EX = [EX_DEFAULT, EX_DEFAULT];
+const DEF_COLORS = {bg:'#ffffff', text:'#222222', unused:'#e4e4e4', used:'#96e696', excess:'#e5484d'};
+const COLOR_LABELS = {unused:'Unused', used:'Used / met', excess:'Excess / over', text:'Text', bg:'Background'};
+const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
+const MENU_GUIDE = ['B1 F1 D2 O1', 'P1 B2 V1 F1 O1', 'P1.5 V1.5 O1', 'D1'];
+
+const QTY = [
+  {name:'Meat & Protein', code:'P', items:[
+    ['Beef fillet, lean, raw','100 g'],['Pork fillet, lean, raw','100 g'],['Minced chicken/beef, lean, raw','100 g'],
+    ['Trim lamb steak, lean, raw','100 g'],['Tuna, canned, drained','185 g'],['Salmon, raw','100 g'],['White fish, raw','100 g'],
+    ['Tempeh','100 g'],['Tofu, firm','100 g'],['Kidney beans','3/4 cup'],['Edamame','1 cup'],['Lentils, canned','1 cup'],['Eggs','2 eggs']]},
+  {name:'Breads & Cereals', code:'B', items:[
+    ['Bread','1 slice'],['Bread roll','1/2 roll'],['Wrap / tortilla','1 mini'],['Crispbread','4 crackers'],['Wheat biscuits','2 biscuits'],
+    ['Sweet potato','3/4 cup'],['Potato','1 medium'],['Untoasted muesli','1/4 cup'],['Wheat bran cereal','1/2 cup'],
+    ['Rolled oats, raw','1/4 cup'],['Pasta, cooked','1/2 cup'],['Quinoa, cooked','1/2 cup'],['Brown rice, cooked','1/2 cup'],['Pearl barley, cooked','1/2 cup']]},
+  {name:'Vegetables', code:'V', items:[
+    ['Mixed salad greens','150 g'],['Coleslaw mix','1 cup'],['Cauliflower rice','2 cups'],['Pumpkin, cubed','3/4 cup'],
+    ['Tomatoes, canned','1 cup'],['Mixed salad vegetables','1 cup'],['Broccoli florets, raw','2 cups'],['Zucchini noodles','2 cups'],
+    ['Corn on the cob','1/2 cob'],['Mushrooms, raw','2 cups'],['Frozen mixed vegetables','1 cup']]},
+  {name:'Fruit', code:'F', items:[
+    ['Apple, medium','1'],['Watermelon','1 cup'],['Kiwi','2 fruits'],['Banana, medium','1'],['Orange, medium','1'],
+    ['Mixed berries, fresh','1 cup'],['Canned peaches in juice','3/4 cup'],['Frozen fruit','1 cup'],['Dried fruit','2 tbsp'],['Fruit juice, 100% fresh','1 cup']]},
+  {name:'Dairy', code:'D', items:[
+    ['Reduced fat cheddar','50 g'],['Reduced fat ricotta','1/2 cup'],['Low-fat cottage cheese','3/4 cup'],['Low-fat latte','1 large cup'],
+    ['Soy milk','1 cup'],['Low-fat milk','1 cup'],['Low-fat yoghurt','2/3 cup']]},
+  {name:'Healthy Fats & Oils', code:'O', items:[
+    ['Extra virgin olive oil','1 tsp'],['Margarine','2 tsp'],['Peanut butter','1 heaped tsp'],['Mayonnaise, reduced-fat','1.5 tbsp'],
+    ['Avocado, mashed','1 tbsp'],['Almonds','6 nuts'],['Walnuts','5 nuts'],['Pistachios','12 nuts'],['Sesame seeds','2 tsp'],['Chia seeds','1 tbsp']]},
+  {name:'Indulgences', code:null, items:[
+    ['Chocolate','4 squares'],['Soft jelly lollies','30 g'],['M&Ms','20 g'],['Cookie, small','1'],['Muffin, mini or 1/2 medium','1 mini or 1/2'],
+    ['Custard','3/4 cup'],['Donut','1/3 donut'],['Ice-cream, reduced-fat','1/2 cup'],['Croissant','about 1/2'],['Danish pastry','30 g'],
+    ['Chips','20 g'],['Pretzels','13 pretzels'],['Popcorn, flavoured','20 g'],['Bacon','50 g'],['Ham','3 slices'],['Sausage, thin','1 sausage'],
+    ['Soft drink','250 ml'],['Cordial','2.5 tbsp'],['Energy drink','200-250 ml'],['Wine','150 ml'],['Beer','275 ml'],['Spirits','30 ml']]},
+  {name:'Free Foods', code:null, items:[
+    ['Condiments','Free'],['Herbs, spices and seasonings','Free'],['Clear soups and vegetable soup','Free'],['Vegetables','Free']]}
+];
+
+// ---------- storage ----------
+// Fills in any missing settings so older saves and restored backups both work.
+function applyDefaults(d){
+  if (!d || !d.settings) d = {settings:{}, days:{}, weights:{}};
+  const s = d.settings;
+  s.allow  = s.allow  || DEF_ALLOW.slice();
+  s.ex     = s.ex     || DEF_EX.slice();
+  if (s.water == null) s.water = WATER_DEFAULT;
+  s.unit   = s.unit   || 'kg';
+  s.colors = {...DEF_COLORS, ...(s.colors||{})};
+  if (s.targetKg === undefined) s.targetKg = null;
+  d.days = d.days || {};
+  d.weights = d.weights || {};
+  d.plans = d.plans || {};
+  return d;
+}
+let db;
+try { db = JSON.parse(localStorage.getItem(KEY)); } catch(e) { db = null; }
+db = applyDefaults(db);
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(db)); } catch(e) { alert('Could not save on this device.'); } }
+
+// ---------- dates ----------
+const pad2 = n => String(n).padStart(2,'0');
+function dateKey(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function ddmmyyyy(d){ return pad2(d.getDate())+'-'+pad2(d.getMonth()+1)+'-'+d.getFullYear(); }
+function todayDate(){ const n=new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
+function todayKey(){ return dateKey(todayDate()); }
+function parseKey(k){ const [y,m,d]=k.split('-').map(Number); return new Date(y, m-1, d); }
+function addDays(d,n){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()+n); }
+function dayDiff(a,b){ return Math.round((b-a)/86400000); }
+function longDate(d){ return d.toLocaleDateString('en-AU',{weekday:'long', day:'numeric', month:'long', year:'numeric'}); }
+function medDate(d){ return d.toLocaleDateString('en-AU',{weekday:'short', day:'numeric', month:'short', year:'numeric'}); }
+function label(g){ return g.code ? g.name+' ('+g.code+')' : g.name; }
+
+let viewDate = todayDate();
+let wDateVal = todayKey();
+let view = 'today';
+let menuMsg = '';
+let settingsMsg = '';
+let menuGuideOpen = false;   // Menu Plans: compact guide by default, "+" expands it
+function curDate(){ return DRAFT_MODE ? viewDate : todayDate(); }
+function curKey(){ return dateKey(curDate()); }
+
+// ---------- day records ----------
+function defaultsRec(){
+  return {allow:db.settings.allow.slice(), used:GROUPS.map(()=>0),
+          exAllow:db.settings.ex.slice(), exUsed:[0,0],
+          waterAllow:db.settings.water, waterUsed:0};
+}
+function normalize(r){
+  r.exUsed = r.exUsed || [0,0];
+  r.exAllow = r.exAllow || DEF_EX.slice();
+  if (r.waterUsed === undefined) r.waterUsed = 0;
+  if (r.waterAllow === undefined) r.waterAllow = WATER_DEFAULT;
+  return r;
+}
+function viewRec(key){ return db.days[key] ? normalize(db.days[key]) : defaultsRec(); }
+function ensureRec(key){ if(!db.days[key]) db.days[key] = defaultsRec(); return normalize(db.days[key]); }
+
+// ---------- formatting ----------
+function fmtU(x){
+  const w = Math.floor(x), half = Math.abs(x - w - 0.5) < 1e-9;
+  if (w === 0 && !half) return '0';
+  if (w === 0) return '.5';
+  return w + (half ? '.5' : '');
+}
+function r1(x){ return Math.round(x*10)/10; }
+function toDisp(kg){ return db.settings.unit === 'lb' ? kg*2.20462 : kg; }
+function fromDisp(v){ return db.settings.unit === 'lb' ? v/2.20462 : v; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function boldCodes(s){ return s.replace(/([A-Z])/g, '<b>$1</b>'); }
+function parseGuide(s){
+  const out = [], re = /([A-Z])([\d.]+)/g;
+  let m;
+  while ((m = re.exec(s))) out.push({code:m[1], amt:m[2]});
+  return out;
+}
+
+// ---------- actions ----------
+function bumpFood(i, d){ const r = ensureRec(curKey()); r.used[i] = Math.max(0, r.used[i] + d); save(); render(); }
+function bumpEx(j, d){ const r = ensureRec(curKey()); r.exUsed[j] = Math.max(0, Math.min(EX_MAX*4, r.exUsed[j] + d*EX_STEP)); save(); render(); }
+function bumpWater(d){ const r = ensureRec(curKey()); r.waterUsed = Math.max(0, r.waterUsed + d); save(); render(); }
+function setAllow(i, h){ db.settings.allow[i] = h; const r = db.days[todayKey()]; if (r) r.allow[i] = h; save(); render(); }
+function setEx(j, m){ db.settings.ex[j] = m; const r = db.days[todayKey()]; if (r) r.exAllow[j] = m; save(); render(); }
+function setWater(c){ db.settings.water = c; const r = db.days[todayKey()]; if (r) r.waterAllow = c; save(); render(); }
+function resetAllow(i){ setAllow(i, DEF_ALLOW[i]); }
+function resetEx(j){ setEx(j, EX_DEFAULT); }
+function resetColors(){ db.settings.colors = {...DEF_COLORS}; save(); render(); }
+function resetAll(){
+  if (!confirm('Reset food allowances, exercise targets, water target, units and colours to defaults? History is kept.')) return;
+  db.settings.allow = DEF_ALLOW.slice(); db.settings.ex = DEF_EX.slice(); db.settings.water = WATER_DEFAULT; db.settings.unit = 'kg';
+  db.settings.colors = {...DEF_COLORS};
+  const r = db.days[todayKey()];
+  if (r){ r.allow = DEF_ALLOW.slice(); r.exAllow = DEF_EX.slice(); r.waterAllow = WATER_DEFAULT; }
+  save(); render();
+}
+function setDay(delta){
+  let d = addDays(viewDate, delta);
+  if (d > todayDate()) d = todayDate();
+  viewDate = d; render();
+}
+
+// Direct entry: set a bar's value from where the user tapped.
+function tapToValue(kind, idx, frac, slots){
+  const r = ensureRec(curKey());
+  const f = Math.min(1, Math.max(0, frac));
+  if (kind === 'food'){
+    r.used[idx] = Math.max(0, Math.round(f * slots * 2));
+  } else if (kind === 'water'){
+    r.waterUsed = Math.max(0, Math.round(f * slots));
+  } else if (kind === 'ex'){
+    r.exUsed[idx] = Math.min(EX_MAX*4, Math.max(0, Math.round(f * slots * 2) * EX_STEP));
+  }
+  save(); render();
+}
+
+// ---------- files: download and read ----------
+function downloadJSON(filename, obj){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+function safeName(s){
+  return (s || 'plan').replace(/[^A-Za-z0-9 _-]+/g,'').trim().replace(/\s+/g,'_') || 'plan';
+}
+function cleanCells(c){
+  return Array.from({length:7}, (_, r) => Array.from({length:4}, (_, k) =>
+    (Array.isArray(c) && Array.isArray(c[r]) && typeof c[r][k] === 'string') ? c[r][k] : ''));
+}
+
+// ---------- menu plan export / import ----------
+function exportMenuPlan(){
+  const mw = ensureMenuWork();
+  const pick = document.getElementById('mPick');
+  const name = pick && pick.value && db.plans[pick.value] ? pick.value : mw.name;
+  const p = db.plans[name] || {name:mw.name, start:mw.start, cells:mw.cells};
+  const out = {type:'dtracker-menu-plan', version:VERSION,
+               plan:{name:p.name || name, start:p.start, cells:cleanCells(p.cells)}};
+  downloadJSON('menu-plan_'+safeName(name)+'.json', out);
+  menuMsg = 'Exported "'+name+'".';
+  render();
+}
+async function importMenuPlan(file){
+  if (!file) return;
+  try {
+    const obj = JSON.parse(await file.text());
+    if (obj.type !== 'dtracker-menu-plan' || !obj.plan) throw new Error('not a D Tracker menu plan file');
+    const p = obj.plan;
+    const name = String(p.name || '').trim() || 'Imported plan';
+    const start = /^\d{4}-\d{2}-\d{2}$/.test(p.start || '') ? p.start : todayKey();
+    if (db.plans[name] && !confirm('A plan called "'+name+'" already exists. Replace it?')){
+      menuMsg = 'Import cancelled.'; render(); return;
+    }
+    db.plans[name] = {name, start, cells:cleanCells(p.cells)};
+    save();
+    menuMsg = 'Imported "'+name+'". Choose it above and press Load.';
+  } catch (err) {
+    menuMsg = 'Import failed: '+err.message+'.';
+  }
+  render();
+}
+
+// ---------- full backup export / import ----------
+function exportBackup(){
+  const stamp = dateKey(todayDate());
+  downloadJSON('dtracker-backup_'+stamp+'.json', {
+    type:'dtracker-backup', version:VERSION, exported:new Date().toISOString(), data:db
+  });
+  settingsMsg = 'Backup exported.';
+  render();
+}
+async function importBackup(file){
+  if (!file) return;
+  try {
+    const obj = JSON.parse(await file.text());
+    if (obj.type !== 'dtracker-backup' || !obj.data || !obj.data.settings)
+      throw new Error('not a D Tracker backup file');
+    if (!confirm('Restore this backup? It replaces ALL data on this phone (history, weights, settings and menu plans). Export a backup first if you want to keep the current data.')){
+      settingsMsg = 'Restore cancelled.'; render(); return;
+    }
+    db = applyDefaults(obj.data);
+    menuWork = db.menuWork || null;
+    save();
+    settingsMsg = 'Backup restored.';
+  } catch (err) {
+    settingsMsg = 'Restore failed: '+err.message+'.';
+  }
+  render();
+}
+
+// ---------- shared rendering ----------
+function applyColors(){
+  const c = db.settings.colors, s = document.documentElement.style;
+  s.setProperty('--bg', c.bg); s.setProperty('--text', c.text);
+  s.setProperty('--unused', c.unused); s.setProperty('--used', c.used); s.setProperty('--excess', c.excess);
+}
+
+// Slot width = 1/max(3, maxUnits). Full segments are one slot; the last partial one is a fraction of a slot.
+function barHTML(useU, allowU, isMin, tapAttr){
+  const maxU = Math.max(useU, allowU);
+  const slotsU = Math.max(3, maxU);
+  const n = Math.max(1, Math.ceil(maxU - 1e-9));
+  const slot = 100 / slotsU;
+  const c01 = x => Math.min(1, Math.max(0, x));
+  let segs = '';
+  for (let i = 0; i < n; i++){
+    const sw = Math.max(c01(maxU - i), 1e-9);
+    const uf = c01(useU - i) / sw * 100;
+    const af = c01(allowU - i) / sw * 100;
+    const p1 = isMin ? uf : Math.min(uf, af);
+    const p2 = uf;
+    segs += '<div class="seg" style="width:'+(slot*sw)+'%;background:linear-gradient(to right,'+
+      'var(--used) 0%,var(--used) '+p1+'%,var(--excess) '+p1+'%,var(--excess) '+p2+'%,'+
+      'var(--unused) '+p2+'%,var(--unused) 100%)"></div>';
+  }
+  return '<div class="bar" '+tapAttr+' data-slots="'+slotsU+'">'+segs+'</div>';
+}
+
+// Exercise: over target counts as met, so the same rule as a minimum applies (no red).
+function leftInfo(used, allow, isMin){
+  if (isMin) return used >= allow ? {t:'met', cls:''} : {t:fmtU(allow-used)+' left', cls:''};
+  const d = used - allow;
+  if (d < 0) return {t:fmtU(-d)+' left', cls:''};
+  if (d === 0) return {t:'met', cls:''};
+  return {t:fmtU(d)+' over', cls:'over'};
+}
+
+function rowHTML(title, used, allow, isMin, unitSuffix, bumpAttrs, barUsed, barAllow, tapAttr){
+  const li = leftInfo(used, allow, isMin);
+  return '<div class="row">'+
+    '<div class="rtop"><span class="gname">'+title+'</span>'+
+    '<span class="nums">'+fmtU(used)+unitSuffix+' / '+fmtU(allow)+unitSuffix+', <span class="'+li.cls+'">'+li.t+'</span></span></div>'+
+    '<div class="rbot">'+
+      '<button class="pm" '+bumpAttrs.minus+(used<=0?' disabled':'')+' aria-label="Minus">&minus;</button>'+
+      barHTML(barUsed, barAllow, isMin, tapAttr)+
+      '<button class="pm" '+bumpAttrs.plus+' aria-label="Plus">+</button>'+
+    '</div></div>';
+}
+
+// Industrial cog: square-toothed gear with a hub hole.
+function cogIcon(size){
+  let teeth = '';
+  for (let a = 0; a < 360; a += 45) teeth += '<rect x="10" y="1.5" width="4" height="5" transform="rotate('+a+' 12 12)"/>';
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">'+
+    '<circle cx="12" cy="12" r="7.5"/>'+teeth+
+    '<circle cx="12" cy="12" r="3" fill="var(--bg)"/></svg>';
+}
+
+// App icon (red apple with D), shown top left on every page.
+function appIcon(size){
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 100 100" aria-hidden="true">'+
+    '<path d="M50 30C36 14 10 20 12 52C14 80 34 92 50 84C66 92 86 80 88 52C90 20 64 14 50 30Z" fill="#d62828"/>'+
+    '<path d="M50 30C50 20 54 12 62 8" stroke="#333" stroke-width="4" fill="none"/>'+
+    '<text x="50" y="67" font-size="44" font-family="Arial" font-weight="bold" text-anchor="middle" fill="white">D</text></svg>';
+}
+
+// Every page: icon top left, centred title, optional right-hand control.
+function header(title, right){
+  return '<div class="head"><div class="hslot">'+appIcon(30)+'</div><div class="ttl">'+title+'</div><div class="hrslot">'+(right||'')+'</div></div>';
+}
+
+// ---------- Today ----------
+function viewToday(){
+  const k = curKey(), r = viewRec(k), d = curDate();
+  const isToday = k === todayKey();
+  const cog = '<button class="icon" data-act="settings" aria-label="Settings">'+cogIcon(26)+'</button>';
+  let html = header('<span class="dd">D</span> Tracker', cog);
+
+  if (DRAFT_MODE){
+    html += '<div class="subnav"><button data-act="day" data-d="-1" aria-label="Previous day">&lsaquo;</button>'+
+      '<span>'+longDate(d)+(isToday?' (today)':'')+'</span>'+
+      '<button data-act="day" data-d="1" aria-label="Next day"'+(isToday?' disabled':'')+'>&rsaquo;</button></div>';
+  } else {
+    html += '<div class="subnav"><span>'+longDate(d)+'</span></div>';
+  }
+
+  html += '<div class="sec-label">Food units</div>';
+  GROUPS.forEach((g, i) => {
+    html += rowHTML(label(g), r.used[i]/2, r.allow[i]/2, g.min, '',
+      {minus:'data-act="bump" data-i="'+i+'" data-d="-1"', plus:'data-act="bump" data-i="'+i+'" data-d="1"'},
+      r.used[i]/2, r.allow[i]/2, 'data-tap="food" data-i="'+i+'"');
+  });
+
+  html += '<div class="wline">'+rowHTML('Water', r.waterUsed, r.waterAllow, false, '',
+    {minus:'data-act="waterbump" data-d="-1"', plus:'data-act="waterbump" data-d="1"'},
+    r.waterUsed, r.waterAllow, 'data-tap="water"')+'</div>';
+
+  html += '<div class="sec-label">Exercise (minutes)</div>';
+  EXERCISE.forEach((name, j) => {
+    html += rowHTML(name, r.exUsed[j], r.exAllow[j], true, ' min',
+      {minus:'data-act="exbump" data-j="'+j+'" data-d="-1"', plus:'data-act="exbump" data-j="'+j+'" data-d="1"'},
+      r.exUsed[j]/EX_SEG, r.exAllow[j]/EX_SEG, 'data-tap="ex" data-j="'+j+'"');
+  });
+  return html;
+}
+
+// ---------- History ----------
+function viewHistory(){
+  const today = todayDate();
+  const days = [];
+  for (let i = 7; i >= 0; i--){
+    const d = addDays(today, -i), k = dateKey(d);
+    days.push({d, i, k, rec: db.days[k] ? normalize(db.days[k]) : null});
+  }
+  let html = header('History', '');
+  html += '<div class="hgrid"><div></div>';
+  days.forEach((x, idx) => {
+    const firstOrNewMonth = idx === 0 || x.d.getDate() === 1;
+    const l1 = x.i === 0 ? 'Today' : '';
+    const wd = x.d.toLocaleDateString('en-AU',{weekday:'short'});
+    const l3 = firstOrNewMonth
+      ? x.d.toLocaleDateString('en-AU',{month:'short', day:'numeric'})
+      : String(x.d.getDate());
+    html += '<div class="hdate"><span class="l1">'+l1+'</span><span>'+wd+'</span><span>'+l3+'</span></div>';
+  });
+
+  function cell(used, allow, isMin, usedTxt, allowTxt){
+    let bg;
+    if (!isMin && used > allow) bg = 'color-mix(in srgb, var(--excess) 55%, var(--bg))';
+    else if (used >= allow)     bg = 'color-mix(in srgb, var(--used) 55%, var(--bg))';
+    else                        bg = 'var(--unused)';
+    return '<div class="hc" style="background:'+bg+'">'+
+      '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="0" y1="100" x2="100" y2="0" vector-effect="non-scaling-stroke"/></svg>'+
+      '<span class="tl">'+usedTxt+'</span><span class="br">'+allowTxt+'</span></div>';
+  }
+  const empty = () => '<div class="hc none">&ndash;</div>';
+
+  html += '<div class="sec-row">Food units</div>';
+  GROUPS.forEach((g, gi) => {
+    html += '<div class="hlab">'+label(g)+'</div>';
+    days.forEach(x => {
+      if (!x.rec){ html += empty(); return; }
+      html += cell(x.rec.used[gi], x.rec.allow[gi], g.min, fmtU(x.rec.used[gi]/2), fmtU(x.rec.allow[gi]/2));
+    });
+  });
+
+  html += '<div class="hline"></div>';
+  html += '<div class="hlab">Water</div>';
+  days.forEach(x => {
+    if (!x.rec){ html += empty(); return; }
+    html += cell(x.rec.waterUsed, x.rec.waterAllow, false, fmtU(x.rec.waterUsed), fmtU(x.rec.waterAllow));
+  });
+  html += '<div class="hline"></div>';
+
+  html += '<div class="sec-row">Exercise (minutes)</div>';
+  EXERCISE.forEach((name, j) => {
+    html += '<div class="hlab">'+name+'</div>';
+    days.forEach(x => {
+      if (!x.rec){ html += empty(); return; }
+      html += cell(x.rec.exUsed[j], x.rec.exAllow[j], true, fmtU(x.rec.exUsed[j]), fmtU(x.rec.exAllow[j]));
+    });
+  });
+  html += '</div>';
+
+  html += '<div class="legend">'+
+    '<span><i class="sw" style="background:var(--used)"></i>Met</span>'+
+    '<span><i class="sw" style="background:var(--excess)"></i>Over</span>'+
+    '<span><i class="sw" style="background:var(--unused)"></i>Short</span></div>';
+  return html;
+}
+
+// ---------- Food QTY ----------
+function viewQty(){
+  let html = header('Food Quantities', '');
+  html += '<div style="font-size:14px; margin-bottom:6px">***  One unit = the portion shown.</div>';
+  QTY.forEach((grp, idx) => {
+    const t = grp.code ? grp.name+' ('+grp.code+')' : grp.name;
+    html += '<details'+(idx===0?' open':'')+'><summary><span>'+t+'</span></summary>';
+    html += '<div class="qhead"><span>Food</span><span>1 unit =</span></div>';
+    grp.items.forEach(it => { html += '<div class="qrow"><span>'+it[0]+'</span><span>'+it[1]+'</span></div>'; });
+    html += '</details>';
+  });
+  return html;
+}
+
+// ---------- Weight ----------
+function weightGraphHTML(){
+  const keys = Object.keys(db.weights).sort();
+  const t = db.settings.targetKg;
+  if (!keys.length && t == null) return '<div class="note">No weights yet. Enter one above to start the graph.</div>';
+
+  const today = todayDate();
+  let start = keys.length ? parseKey(keys[0]) : addDays(today, -13);
+  const from13 = addDays(today, -13);
+  if (from13 < start) start = from13;
+  let end = keys.length ? parseKey(keys[keys.length-1]) : today;
+  if (today > end) end = today;
+  const N = dayDiff(start, end) + 1;
+
+  const vals = keys.map(k => r1(toDisp(db.weights[k])));
+  if (t != null) vals.push(r1(toDisp(t)));
+  let lo = Math.floor(Math.min(...vals) - 1), hi = Math.ceil(Math.max(...vals) + 1);
+  if (hi - lo < 2) hi = lo + 2;
+
+  const H = 180, top = 10, bot = 22, plotH = H - top - bot;
+  const Y = v => top + (1 - (v - lo) / (hi - lo)) * plotH;
+  const W = N * PX_PER_DAY;
+  const X = i => (i + 0.5) * PX_PER_DAY;
+
+  const step = Math.max(1, Math.ceil((hi - lo) / 4));
+  let axis = '', grid = '';
+  for (let v = lo; v <= hi; v += step){
+    axis += '<text x="38" y="'+(Y(v)+4)+'" font-size="11" text-anchor="end" fill="currentColor">'+v+'</text>';
+    grid += '<line x1="0" x2="'+W+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="currentColor" stroke-opacity="0.12"/>';
+  }
+
+  const pts = keys.map(k => ({x: X(dayDiff(start, parseKey(k))), y: Y(r1(toDisp(db.weights[k])))}));
+  const poly = pts.map(p => p.x+','+p.y).join(' ');
+  const dots = pts.map(p => '<circle cx="'+p.x+'" cy="'+p.y+'" r="3.5" fill="var(--used)" stroke="var(--line)"/>').join('');
+
+  let xl = '';
+  for (let i = 0; i < N; i++){
+    const last = i === N-1;
+    if (i % 7 === 0 || (last && (N-1) % 7 >= 4)){
+      const txt = addDays(start, i).toLocaleDateString('en-AU',{day:'numeric', month:'short'});
+      xl += '<text x="'+X(i)+'" y="'+(H-6)+'" font-size="11" text-anchor="middle" fill="currentColor">'+txt+'</text>';
+    }
+  }
+
+  const targetLine = t != null
+    ? '<line x1="0" x2="'+W+'" y1="'+Y(r1(toDisp(t)))+'" y2="'+Y(r1(toDisp(t)))+'" stroke="var(--excess)" stroke-width="1.5" stroke-dasharray="4 4"/>'
+    : '';
+
+  return '<div class="gwrap">'+
+    '<svg width="44" height="'+H+'" style="flex:none">'+axis+'</svg>'+
+    '<div class="gscroll" id="gscroll"><svg width="'+W+'" height="'+H+'">'+grid+targetLine+
+      '<polyline points="'+poly+'" fill="none" stroke="var(--line)" stroke-width="1.5"/>'+
+      dots+xl+'</svg></div></div>';
+}
+
+function weightTableHTML(){
+  const keys = Object.keys(db.weights).sort().reverse();
+  const t = db.settings.targetKg, u = db.settings.unit;
+  if (!keys.length) return '<div class="note">No entries yet.</div>';
+  let rows = '<div class="trow th"><span>Date</span><span>Weight '+u+'</span><span>vs target</span></div>';
+  keys.forEach(k => {
+    const w = r1(toDisp(db.weights[k]));
+    let diff = '–';
+    if (t != null){
+      const d = r1(w - r1(toDisp(t)));
+      diff = d > 0 ? d.toFixed(1)+' to lose' : d < 0 ? (-d).toFixed(1)+' to gain' : 'on target';
+    }
+    rows += '<div class="trow"><span>'+medDate(parseKey(k))+'</span><span>'+w.toFixed(1)+'</span><span>'+diff+'</span></div>';
+  });
+  return '<div class="tscroll">'+rows+'</div>';
+}
+
+function refreshWeightParts(){
+  const g = document.getElementById('wGraph');
+  if (!g) return;
+  g.innerHTML = weightGraphHTML();
+  const sc = document.getElementById('gscroll');
+  if (sc) sc.scrollLeft = sc.scrollWidth;
+  document.getElementById('wTable').innerHTML = weightTableHTML();
+}
+
+function viewWeight(){
+  const u = db.settings.unit;
+  const rec = db.weights[wDateVal];
+  const wVal = rec != null ? r1(toDisp(rec)).toFixed(1) : '';
+  const t = db.settings.targetKg;
+  const tVal = t != null ? r1(toDisp(t)).toFixed(1) : '';
+  let html = header('Weight', '');
+  html += '<div class="tgt"><label>Target weight ('+u+') <input type="number" id="wTarget" step="0.1" min="0" value="'+tVal+'" placeholder="not set"></label></div>';
+  html += '<div class="wform">'+
+    '<label>Date <input type="date" id="wDate" value="'+wDateVal+'"></label>'+
+    '<label>Weight ('+u+') <input type="number" id="wWt" step="0.1" min="0" value="'+wVal+'" placeholder="e.g. 80.0"></label>'+
+    '</div>';
+  html += '<div id="wGraph"></div>';
+  html += '<div class="sec-label" style="margin-top:12px">Weight log</div>';
+  html += '<div id="wTable" style="margin-top:4px"></div>';
+  return html;
+}
+
+// ---------- Menu Plans ----------
+function blankCells(){ return Array.from({length:7}, () => ['','','','']); }
+let menuWork = db.menuWork || null;
+function ensureMenuWork(){
+  if (!menuWork) menuWork = {name:'Menu '+ddmmyyyy(todayDate()), start:todayKey(), cells:blankCells()};
+  if (!menuWork.cells || menuWork.cells.length !== 7) menuWork.cells = blankCells();
+  return menuWork;
+}
+function persistMenu(){ db.menuWork = menuWork; save(); }
+
+// Guide cell: compact ("B1 F1 D2 O1") or full (one food category per line).
+function guideCellHTML(s){
+  const items = parseGuide(s);
+  if (!menuGuideOpen){
+    return '<div class="mguide">'+items.map(x => '<b>'+x.code+'</b>'+x.amt).join(' ')+'</div>';
+  }
+  return '<div class="mguide full">'+items.map(x =>
+    '<div>'+CODE_NAME[x.code]+' (<b>'+x.code+'</b>) '+x.amt+'</div>').join('')+'</div>';
+}
+
+function viewMenus(){
+  const mw = ensureMenuWork();
+  const start = parseKey(mw.start);
+  let html = header('Menu Plans', '');
+
+  html += '<div class="mtop"><label>First day <input type="date" id="mStart" value="'+mw.start+'"></label></div>';
+
+  html += '<div class="mgrid"><div></div>';
+  MEALS.forEach(m => { html += '<div class="mh">'+m+'</div>'; });
+  html += '<div class="mlab"><span>Guide</span><button class="gtog" data-act="guide" aria-label="'+(menuGuideOpen?'Collapse guide':'Expand guide')+'">'+(menuGuideOpen?'&minus;':'+')+'</button></div>';
+  MENU_GUIDE.forEach(g => { html += guideCellHTML(g); });
+
+  for (let r = 0; r < 7; r++){
+    const d = addDays(start, r);
+    const wd = d.toLocaleDateString('en-AU',{weekday:'short'});
+    const dm = d.toLocaleDateString('en-AU',{day:'numeric', month:'short'});
+    html += '<div class="mday"><b>'+wd+'</b>'+dm+'</div>';
+    for (let c = 0; c < 4; c++){
+      html += '<textarea rows="2" data-cell="'+r+','+c+'" aria-label="'+wd+' '+MEALS[c]+'">'+esc(mw.cells[r][c])+'</textarea>';
+    }
+  }
+  html += '</div>';
+
+  const names = Object.keys(db.plans).sort();
+  const opts = names.length
+    ? names.map(n => '<option value="'+esc(n)+'">'+esc(n)+'</option>').join('')
+    : '<option value="">(no saved plans)</option>';
+
+  html += '<div class="msave">'+
+    '<div class="r"><label style="font-size:14px;flex:1;display:flex;gap:8px;align-items:center">Plan name <input type="text" id="mName" value="'+esc(mw.name)+'"></label></div>'+
+    '<div class="r"><button class="btn" data-act="msave">Save plan</button></div>'+
+    '<div class="r"><select id="mPick">'+opts+'</select>'+
+      '<button class="btn" data-act="mload"'+(names.length?'':' disabled')+'>Load</button>'+
+      '<button class="btn" data-act="mdel"'+(names.length?'':' disabled')+'>Delete</button></div>'+
+    '<div class="r"><button class="btn" data-act="mexport">Export plan file</button>'+
+      '<button class="btn" data-act="mimport">Import plan file</button>'+
+      '<input type="file" id="mFile" accept=".json,application/json" style="display:none"></div>'+
+    '<div class="mmsg">'+esc(menuMsg)+'</div>'+
+    '</div>';
+  return html;
+}
+
+// Grow each menu text box to fit its content, so the whole page scrolls instead.
+function autoGrow(el){
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+function growAllMenuBoxes(){
+  document.querySelectorAll('textarea[data-cell]').forEach(autoGrow);
+}
+
+// ---------- Settings ----------
+function viewSettings(){
+  const c = db.settings.colors;
+  let html = header('Settings', '<button class="link" data-act="back">Back &rsaquo;</button>');
+
+  html += '<div class="sec"><h3>Daily Food Allowances (Units)</h3>';
+  GROUPS.forEach((g, i) => {
+    html += '<div class="srow"><div><div class="gname">'+label(g)+'</div>'+
+      '<div class="dflt">Default '+(DEF_ALLOW[i]/2)+(g.min?' (minimum)':'')+'</div></div>'+
+      '<div class="sctl"><input type="number" step="0.5" min="0" value="'+(db.settings.allow[i]/2)+'" data-allow="'+i+'">'+
+      '<button class="btn" data-act="allowreset" data-i="'+i+'">Reset</button></div></div>';
+  });
+  html += '<div class="note">Food Allowance defaults are for a weight-loss calorie-deficit diet. Consult a dietician for your personal needs.</div></div>';
+
+  html += '<div class="sec"><h3>Daily Water Target (Cups)</h3>'+
+    '<div class="srow"><div><div class="gname">Water</div>'+
+    '<div class="dflt">Default '+WATER_DEFAULT+' cups (whole cups)</div></div>'+
+    '<div class="sctl"><input type="number" step="1" min="0" value="'+db.settings.water+'" data-water="1">'+
+    '<button class="btn" data-act="waterreset">Reset</button></div></div></div>';
+
+  html += '<div class="sec"><h3>Daily Exercise Targets (Minutes)</h3>';
+  EXERCISE.forEach((name, j) => {
+    html += '<div class="srow"><div><div class="gname">'+name+'</div>'+
+      '<div class="dflt">Default '+EX_DEFAULT+' min (5-min steps, max '+EX_MAX+')</div></div>'+
+      '<div class="sctl"><input type="number" step="5" min="0" max="'+EX_MAX+'" value="'+db.settings.ex[j]+'" data-ex="'+j+'">'+
+      '<button class="btn" data-act="exreset" data-j="'+j+'">Reset</button></div></div>';
+  });
+  html += '</div>';
+
+  html += '<div class="sec"><h3>Weight Units</h3>'+
+    '<div class="srow"><div><div class="gname">Units</div><div class="dflt">Default kg</div></div>'+
+    '<div class="sctl"><select data-unit>'+
+      '<option value="kg"'+(db.settings.unit==='kg'?' selected':'')+'>kg</option>'+
+      '<option value="lb"'+(db.settings.unit==='lb'?' selected':'')+'>lb</option>'+
+    '</select></div></div></div>';
+
+  html += '<div class="sec"><h3>Colours</h3>';
+  Object.keys(COLOR_LABELS).forEach(k => {
+    html += '<div class="srow"><div><div class="gname">'+COLOR_LABELS[k]+'</div>'+
+      '<div class="dflt">Default '+DEF_COLORS[k]+'</div></div>'+
+      '<div class="sctl"><input type="color" value="'+c[k]+'" data-color="'+k+'"></div></div>';
+  });
+  html += '<div style="margin-top:10px"><button class="btn" data-act="colreset">Reset colours to defaults</button></div></div>';
+
+  html += '<div class="sec"><h3>Backup</h3>'+
+    '<div class="r"><button class="btn" data-act="bexport">Export full backup</button>'+
+    '<button class="btn" data-act="bimport">Import full backup</button>'+
+    '<input type="file" id="bFile" accept=".json,application/json" style="display:none"></div>'+
+    '<div class="note">A full backup holds all food history, weights, settings and menu plans. Restoring a backup replaces everything on this phone.</div>'+
+    '<div class="mmsg" style="margin-top:6px">'+esc(settingsMsg)+'</div></div>';
+
+  html += '<div class="sec"><h3>Reset</h3><button class="btn" data-act="resetall">Reset allowances, targets, units and colours</button>'+
+    '<div class="note">Reset does not delete history, weights or menu plans.</div></div>';
+
+  html += '<div class="ver">D Tracker v'+VERSION+(DRAFT_MODE?' · draft mode on':'')+'</div>';
+  return html;
+}
+
+// ---------- main render ----------
+const TABS = [['today','Today'],['history','History'],['qty','Food QTY'],['weight','Weight'],['menu','Menus']];
+
+function render(){
+  applyColors();
+  let html;
+  if (view === 'settings') html = viewSettings();
+  else if (view === 'history') html = viewHistory();
+  else if (view === 'qty') html = viewQty();
+  else if (view === 'weight') html = viewWeight();
+  else if (view === 'menu') html = viewMenus();
+  else html = viewToday();
+  document.getElementById('app').innerHTML = html;
+  document.getElementById('tabs').innerHTML = TABS.map(([v, lab]) =>
+    '<button class="'+(view===v?'on':'')+'" data-act="tab" data-v="'+v+'">'+lab+'</button>'
+  ).join('');
+  if (view === 'weight') refreshWeightParts();
+  if (view === 'menu') growAllMenuBoxes();
+}
+
+// ---------- events ----------
+// Tapping a bar sets its value from the tap position.
+document.addEventListener('click', e => {
+  const bar = e.target.closest('.bar[data-tap]');
+  if (bar){
+    const rect = bar.getBoundingClientRect();
+    const frac = (e.clientX - rect.left) / rect.width;
+    const slots = +bar.dataset.slots;
+    const kind = bar.dataset.tap;
+    if (kind === 'food') tapToValue('food', +bar.dataset.i, frac, slots);
+    else if (kind === 'water') tapToValue('water', 0, frac, slots);
+    else if (kind === 'ex') tapToValue('ex', +bar.dataset.j, frac, slots);
+    return;
+  }
+
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  const a = el.dataset.act;
+  if (a === 'bump') bumpFood(+el.dataset.i, +el.dataset.d);
+  else if (a === 'exbump') bumpEx(+el.dataset.j, +el.dataset.d);
+  else if (a === 'waterbump') bumpWater(+el.dataset.d);
+  else if (a === 'day') setDay(+el.dataset.d);
+  else if (a === 'tab'){ view = el.dataset.v; menuMsg = ''; settingsMsg = ''; render(); document.getElementById('app').scrollTop = 0; }
+  else if (a === 'settings'){ view = 'settings'; render(); }
+  else if (a === 'back'){ view = 'today'; render(); }
+  else if (a === 'guide'){ menuGuideOpen = !menuGuideOpen; render(); }
+  else if (a === 'allowreset') resetAllow(+el.dataset.i);
+  else if (a === 'exreset') resetEx(+el.dataset.j);
+  else if (a === 'waterreset') setWater(WATER_DEFAULT);
+  else if (a === 'colreset') resetColors();
+  else if (a === 'resetall') resetAll();
+  else if (a === 'msave') saveMenuPlan();
+  else if (a === 'mload') loadMenuPlan();
+  else if (a === 'mdel') deleteMenuPlan();
+  else if (a === 'mexport') exportMenuPlan();
+  else if (a === 'mimport') document.getElementById('mFile').click();
+  else if (a === 'bexport') exportBackup();
+  else if (a === 'bimport') document.getElementById('bFile').click();
+});
+
+function saveMenuPlan(){
+  const mw = ensureMenuWork();
+  const name = (mw.name || '').trim() || ('Menu '+ddmmyyyy(parseKey(mw.start)));
+  mw.name = name;
+  if (db.plans[name] && !confirm('A plan called "'+name+'" exists. Replace it?')){ menuMsg = 'Not saved.'; render(); return; }
+  db.plans[name] = {name, start:mw.start, cells:JSON.parse(JSON.stringify(mw.cells))};
+  persistMenu();
+  menuMsg = 'Saved "'+name+'".';
+  render();
+}
+function loadMenuPlan(){
+  const pick = document.getElementById('mPick');
+  const name = pick && pick.value;
+  if (!name || !db.plans[name]){ menuMsg = 'Choose a saved plan first.'; render(); return; }
+  const p = db.plans[name];
+  menuWork = {name:p.name, start:p.start, cells:JSON.parse(JSON.stringify(p.cells))};
+  persistMenu();
+  menuMsg = 'Loaded "'+name+'".';
+  render();
+}
+function deleteMenuPlan(){
+  const pick = document.getElementById('mPick');
+  const name = pick && pick.value;
+  if (!name || !db.plans[name]) return;
+  if (!confirm('Delete saved plan "'+name+'"?')) return;
+  delete db.plans[name];
+  save();
+  menuMsg = 'Deleted "'+name+'".';
+  render();
+}
+
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.id === 'mFile'){
+    importMenuPlan(el.files[0]); el.value = ''; return;
+  }
+  if (el.id === 'bFile'){
+    importBackup(el.files[0]); el.value = ''; return;
+  }
+  if (el.dataset.allow !== undefined){
+    const v = parseFloat(el.value);
+    if (isNaN(v) || v < 0){ render(); return; }
+    setAllow(+el.dataset.allow, Math.round(v*2));
+  } else if (el.dataset.water !== undefined){
+    const v = parseInt(el.value, 10);
+    if (isNaN(v) || v < 0){ render(); return; }
+    setWater(v);
+  } else if (el.dataset.ex !== undefined){
+    let v = parseFloat(el.value);
+    if (isNaN(v)){ render(); return; }
+    v = Math.min(EX_MAX, Math.max(0, Math.round(v/EX_STEP)*EX_STEP));
+    setEx(+el.dataset.ex, v);
+  } else if (el.dataset.color){
+    db.settings.colors[el.dataset.color] = el.value; save(); render();
+  } else if (el.dataset.unit !== undefined){
+    db.settings.unit = el.value; save(); render();
+  } else if (el.id === 'wDate'){
+    wDateVal = el.value || todayKey(); render();
+  } else if (el.id === 'wWt'){
+    if (el.value === '') delete db.weights[wDateVal];
+    else {
+      const v = parseFloat(el.value);
+      if (isNaN(v) || v <= 0){ render(); return; }
+      db.weights[wDateVal] = Math.round(fromDisp(v)*100)/100;
+    }
+    save(); render();
+  } else if (el.id === 'mStart'){
+    const mw = ensureMenuWork();
+    if (el.value){
+      mw.start = el.value;
+      mw.name = 'Menu '+ddmmyyyy(parseKey(el.value));
+      persistMenu(); menuMsg = ''; render();
+    }
+  } else if (el.id === 'mName'){
+    const mw = ensureMenuWork(); mw.name = el.value; persistMenu();
+  } else if (el.dataset.cell !== undefined){
+    const [r, c] = el.dataset.cell.split(',').map(Number);
+    const mw = ensureMenuWork();
+    mw.cells[r][c] = el.value;
+    persistMenu();
+  }
+});
+
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.id === 'wTarget'){
+    const v = parseFloat(el.value);
+    db.settings.targetKg = isNaN(v) || v <= 0 ? null : Math.round(fromDisp(v)*100)/100;
+    save(); refreshWeightParts();
+  } else if (el.dataset.cell !== undefined){
+    autoGrow(el);
+  }
+});
+
+window.addEventListener('resize', () => { if (view === 'menu') growAllMenuBoxes(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+
+render();
+</script>
+</body>
+</html>
