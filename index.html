@@ -155,14 +155,14 @@ const GROUPS = [
   {name:'Healthy Fats & Oils', code:'O', def:3,   min:false},
   {name:'Indulgences',         code:null, def:1,  min:false}
 ];
-const CODE_NAME = {P:'Protein', B:'Breads / Cereals', V:'Vegetables', F:'Fruit', D:'Dairy', O:'Healthy Fats & Oils'};
+const CODE_NAME = {P:'Protein', BC:'Breads / Cereals', V:'Vegetables', F:'Fruit', D:'Dairy', O:'Healthy Fats & Oils'};
 const EXERCISE = ['Cardio', 'Strength'];
 const DEF_ALLOW = GROUPS.map(g => Math.round(g.def * 2));
 const DEF_EX = [EX_DEFAULT, EX_DEFAULT];
 const DEF_COLORS = {bg:'#ffffff', text:'#222222', unused:'#e4e4e4', used:'#96e696', progress:'#e4cd85', excess:'#e5484d'};
 const COLOR_LABELS = {unused:'None (zero)', progress:'Progress (part way)', used:'Met', excess:'Over', text:'Text', bg:'Background'};
 const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
-const MENU_GUIDE = ['B1 F1 D2 O1', 'P1 B2 V1 F1 O1', 'P1.5 V1.5 O1', 'D1'];
+const MENU_GUIDE = ['BC1 F1 D2 O1', 'P1 BC2 V1 F1 O1', 'P1.5 V1.5 O1', 'D1'];
 
 const QTY = [
   {name:'Meat & Protein', code:'P', items:[
@@ -697,7 +697,7 @@ function ensureMenuWork(){
 }
 function persistMenu(){ db.menuWork = menuWork; save(); }
 
-// Guide cell: compact ("B1 F1 D2 O1") or full (one food category per line).
+// Guide cell: compact ("BC1 F1 D2 O1") or full (one food category per line).
 function guideCellHTML(s){
   const items = parseGuide(s);
   if (!menuGuideOpen){
