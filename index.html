@@ -139,7 +139,7 @@ input[type=color]{width:56px; height:34px; padding:2px; border:1px solid var(--l
 
 <script>
 const VERSION = '0.9';
-const DRAFT_MODE = false;      // set to false to hide the date arrows and always use today
+const DRAFT_MODE = true;      // set to false to hide the date arrows and always use today
 const KEY = 'dtracker.v1';    // same key so earlier test data carries over
 const EX_MAX = 120, EX_STEP = 5, EX_SEG = 10, EX_DEFAULT = 30;
 const WATER_DEFAULT = 8;      // cups
@@ -812,7 +812,7 @@ function viewSettings(){
   html += '<div class="sec"><h3>Reset</h3><button class="btn" data-act="resetall">Reset allowances, targets, units and colours</button>'+
     '<div class="note">Reset does not delete history, weights or menu plans.</div></div>';
 
-  html += '<div class="ver">D Tracker v'+VERSION+(DRAFT_MODE?' · draft mode on':'')+'</div>';
+  html += '<div class="ver">D Tracker v'+VERSION+(DRAFT_MODE?' · Edit Mode on':'')+'</div>';
   return html;
 }
 
